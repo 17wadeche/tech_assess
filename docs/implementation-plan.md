@@ -45,7 +45,7 @@ The batch output includes the row number, complaint identifier, product, serial/
 
 ## Data fields to capture
 
-- Complaint narrative, product family, country, event date, awareness date, reporter role, patient outcome, intervention, device availability, lot/serial/UDI, software version, error codes, photos, return status, and related complaint identifiers.
+- Complaint narrative, product family, country, event date, awareness date, reporter role, patient outcome, intervention, device availability, lot/serial/UDI, software version, error codes, photos, return status, no-return rationale, and related complaint identifiers.
 - Final selected assessments, reviewer rationale, override reason, reportability decision, CAPA/escalation links, and closure codes.
 
 ## Production controls
@@ -54,3 +54,7 @@ The batch output includes the row number, complaint identifier, product, serial/
 - Show missing information prompts before downgrading a recommendation.
 - Route high-severity matches to the responsible function immediately.
 - Revalidate whenever SOPs, products, or reportability rules change.
+
+## Running locally
+
+Use `npm start` to run the static prototype. The start script uses Node's built-in HTTP server implementation in `scripts/serve.mjs`, so Windows users do not need Python installed or configured in PATH.

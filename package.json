@@ -4,7 +4,7 @@
   "description": "Configurable AI-assisted triage for complaint technical assessments with Excel-style batch import.",
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 4173",
+    "start": "node scripts/serve.mjs",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {},
