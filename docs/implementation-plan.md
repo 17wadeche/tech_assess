@@ -47,6 +47,19 @@ Recommended production hybrid architecture:
 4. Calibrate confidence with held-out complaints so an 80% confidence bucket is correct approximately 80% of the time. Track false negatives for each high-risk assessment separately.
 5. Store decision features, matched keywords, model version, rule version, confidence, reviewer selection, and override reason for auditability.
 
+
+## Hybrid rules + ML confidence design
+
+The current implementation is a hybrid-ready rules baseline: mandatory/high-risk rules protect safety-critical triggers while the scoring interface can later accept an ML/NLP probability for each assessment. The app now returns an explicit decision (`Technical assessment needed`, `Technical assessment should be considered`, or `No technical assessment indicated from current facts`) plus a numeric confidence and confidence level.
+
+Recommended production hybrid architecture:
+
+1. Keep deterministic rules for never-miss triggers such as death, serious injury, reportability flags, cybersecurity/privacy signals, sterility/contamination, product malfunction, and product return availability.
+2. Train a supervised text classifier on historical complaint rows to predict each approved assessment type from narrative, event context, code/LLT, product family, lot/serial availability, return status, reportability flag, and outcome.
+3. Blend rule scores and ML probabilities using conservative thresholds: rules can force `Required`; ML can raise `Consider` or `Required` only after validation; reviewers can override with rationale.
+4. Calibrate confidence with held-out complaints so an 80% confidence bucket is correct approximately 80% of the time. Track false negatives for each high-risk assessment separately.
+5. Store decision features, matched keywords, model version, rule version, confidence, reviewer selection, and override reason for auditability.
+
 ## Recommended build path
 
 1. Create a controlled assessment taxonomy with each option's SOP owner, trigger criteria, required evidence, and mandatory escalation path.
