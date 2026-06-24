@@ -1,5 +1,5 @@
 import { evaluateTechnicalAssessmentNeed } from './assessmentRules.js';
-import { parseDelimitedComplaints, summarizeBatch, toCsv } from './excelImport.js';
+import { parseDelimitedComplaints, parseXlsxComplaints, summarizeBatch, toCsv } from './excelImport.js';
 
 const state = { rows: [], analyzed: [] };
 
@@ -15,47 +15,18 @@ function el(tag, attrs = {}, children = []) {
   return node;
 }
 
-function analyzeText() {
-  const description = document.querySelector('#single-description').value;
-  const product = document.querySelector('#single-product').value;
-  const outcome = document.querySelector('#single-outcome').value;
-  const patientImpact = document.querySelector('#patient-impact').checked;
-  const lotKnown = document.querySelector('#lot-known').checked;
-  renderResults(evaluateTechnicalAssessmentNeed({ description, product, outcome, patientImpact, lotKnown }));
-}
-
-function renderResults(evaluation) {
-  const results = Array.isArray(evaluation) ? evaluation : evaluation.results;
-  const summary = document.querySelector('#decision-summary');
-  if (summary && !Array.isArray(evaluation)) {
-    summary.textContent = `${evaluation.decision} · ${evaluation.confidenceLevel} confidence (${evaluation.confidence}%)`;
-  }
-  const container = document.querySelector('#single-results');
-  container.replaceChildren(...results.map(result => el('article', { class: `result ${result.recommendation.toLowerCase().replaceAll(' ', '-')}` }, [
-    el('div', { class: 'resultHeader' }, [el('h3', { text: result.name }), el('span', { text: result.score })]),
-    el('p', { class: 'badge', text: `${result.recommendation} · ${result.confidenceLevel} confidence` }),
-    el('p', { text: result.purpose }),
-    el('p', { class: 'small', text: result.matchedKeywords.length ? `Matched: ${result.matchedKeywords.join(', ')}` : 'No direct keyword match in current facts.' }),
-    el('p', { class: 'small', text: result.rationales?.length ? `Rationale: ${result.rationales.join('; ')}` : 'Rationale: insufficient facts for a stronger recommendation.' }),
-    el('details', {}, [
-      el('summary', { text: 'Evidence and next actions' }),
-      el('ul', {}, result.evidence.map(item => el('li', { text: item }))),
-      el('ol', {}, result.defaultActions.map(item => el('li', { text: item })))
-    ])
-  ])));
-}
-
 function renderBatch() {
   const summary = document.querySelector('#batch-summary');
   const table = document.querySelector('#batch-table');
   if (!state.analyzed.length) {
-    summary.textContent = 'Upload an Excel-exported CSV/TSV file or paste rows copied from Excel.';
+    summary.textContent = 'Upload the full XLSX workbook to evaluate every complaint row.';
     table.replaceChildren();
     return;
   }
+  const neededCount = state.analyzed.filter(row => row.decision === 'Technical assessment needed').length;
   const requiredCount = state.analyzed.filter(row => row.required.length).length;
   const avgConfidence = Math.round(state.analyzed.reduce((sum, row) => sum + row.confidence, 0) / state.analyzed.length);
-  summary.textContent = `${state.analyzed.length} complaints analyzed. ${requiredCount} have one or more required assessments. Average confidence: ${avgConfidence}%.`;
+  summary.textContent = `${state.analyzed.length} rows analyzed. ${neededCount} need a technical assessment. ${requiredCount} have one or more required assessment types. Average confidence: ${avgConfidence}%.`;
   table.replaceChildren(el('thead', {}, [el('tr', {}, ['Row', 'PE - PLI #', 'Product', 'Serial/Lot', 'Decision', 'Confidence', 'Required assessments', 'Consider'].map(text => el('th', { text })))]),
     el('tbody', {}, state.analyzed.map(row => el('tr', {}, [
       el('td', { text: row.rowNumber }),
@@ -69,17 +40,33 @@ function renderBatch() {
     ]))));
 }
 
-function loadDelimitedText(text) {
-  state.rows = parseDelimitedComplaints(text);
+function analyzeRows(rows) {
+  state.rows = rows;
   state.analyzed = summarizeBatch(state.rows, evaluateTechnicalAssessmentNeed);
   renderBatch();
+}
+
+async function loadFile(file) {
+  const summary = document.querySelector('#batch-summary');
+  summary.textContent = `Reading ${file.name}...`;
+  try {
+    const rows = /\.xlsx$/i.test(file.name)
+      ? await parseXlsxComplaints(await file.arrayBuffer())
+      : parseDelimitedComplaints(await file.text());
+    analyzeRows(rows);
+  } catch (error) {
+    state.rows = [];
+    state.analyzed = [];
+    renderBatch();
+    summary.textContent = `Could not read ${file.name}: ${error.message}`;
+  }
 }
 
 function downloadCsv() {
   if (!state.analyzed.length) return;
   const blob = new Blob([toCsv(state.analyzed)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const link = el('a', { href: url, download: 'complaint-assessment-recommendations.csv' });
+  const link = el('a', { href: url, download: 'complaint-assessment-decisions.csv' });
   document.body.append(link);
   link.click();
   link.remove();
@@ -87,19 +74,11 @@ function downloadCsv() {
 }
 
 function init() {
-  document.querySelector('#single-form').addEventListener('input', analyzeText);
   document.querySelector('#file-input').addEventListener('change', event => {
     const file = event.target.files[0];
-    if (!file) return;
-    if (/\.xlsx$/i.test(file.name)) {
-      document.querySelector('#batch-summary').textContent = 'This browser-only prototype does not parse native .xlsx workbooks yet. Save the sheet as CSV or copy/paste the Excel rows below.';
-      return;
-    }
-    file.text().then(loadDelimitedText);
+    if (file) loadFile(file);
   });
-  document.querySelector('#paste-data').addEventListener('input', event => loadDelimitedText(event.target.value));
   document.querySelector('#download-csv').addEventListener('click', downloadCsv);
-  analyzeText();
   renderBatch();
 }
 
