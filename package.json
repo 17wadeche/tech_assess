@@ -1,0 +1,12 @@
+{
+  "name": "complaint-technical-assessment-ai",
+  "version": "1.1.0",
+  "description": "Configurable AI-assisted triage for complaint technical assessments with Excel-style batch import.",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complaint Technical Assessment AI</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Complaint handling decision support</p>
+          <h1>Technical assessment recommender</h1>
+          <p class="lede">Analyze a single complaint or import Excel-style complaint rows to identify likely technical, medical, regulatory, and quality assessments. Replace the starter taxonomy with approved controlled procedure terms before production use.</p>
+        </div>
+        <div class="heroCard"><strong>AI</strong><span>explainable assessment triage</span></div>
+      </section>
+
+      <section class="grid">
+        <form id="single-form" class="panel">
+          <h2>Single complaint</h2>
+          <label>Complaint narrative<textarea id="single-description" rows="8">Clinician reports the pump alarmed with error code 402 and stopped during therapy. Patient was hospitalized overnight for monitoring. Device is available for return. Lot AB123, software v3.2.</textarea></label>
+          <div class="twoCol">
+            <label>Product / family<input id="single-product" placeholder="e.g., pump, lead, app" /></label>
+            <label>Patient outcome<input id="single-outcome" placeholder="e.g., no injury, hospitalization" /></label>
+          </div>
+          <label class="check"><input id="patient-impact" type="checkbox" checked /> Patient harm, intervention, or clinical symptoms are reported</label>
+          <label class="check"><input id="lot-known" type="checkbox" checked /> Lot, batch, serial, or UDI is known</label>
+        </form>
+        <section class="panel">
+          <h2>Recommended assessment plan</h2>
+          <div id="single-results" class="cards"></div>
+        </section>
+      </section>
+
+      <section class="panel importPanel">
+        <div class="sectionHeader">
+          <div>
+            <h2>Excel row import</h2>
+            <p>Use the columns shown in your screenshot, including <strong>PE - PLI #</strong>, <strong>Product Description - PE PLI</strong>, <strong>Serial/Lot # - PE PLI</strong>, <strong>Event Description - PE</strong>, <strong>Event Context</strong>, <strong>Code/LLT Desc - PE PLI</strong>, <strong>Reportable?</strong>, and <strong>Product Returned to MDT?</strong>.</p>
+          </div>
+          <button id="download-csv" type="button">Download recommendations CSV</button>
+        </div>
+        <div class="twoCol">
+          <label>Upload CSV/TSV exported from Excel<input id="file-input" type="file" accept=".csv,.tsv,.txt,.xlsx" /></label>
+          <label>Or paste rows copied from Excel<textarea id="paste-data" rows="5" placeholder="Paste the header row and complaint rows here"></textarea></label>
+        </div>
+        <p id="batch-summary" class="notice"></p>
+        <div class="tableWrap"><table id="batch-table"></table></div>
+      </section>
+
+      <section class="panel governance">
+        <h2>Implementation guardrails</h2>
+        <ul>
+          <li>Keep the model advisory: the complaint owner remains accountable for final assessment selection.</li>
+          <li>Map each option to controlled SOP names, business rules, reportability clocks, and product-family procedures.</li>
+          <li>Validate with historical complaints, measure missed required assessments, and require quality/regulatory sign-off before release.</li>
+          <li>Store rationale, matched facts, model/rule version, reviewer override, and audit trail for every recommendation.</li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
