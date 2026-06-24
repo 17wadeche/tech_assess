@@ -15,6 +15,25 @@ This prototype uses a transparent rules taxonomy because Medtronic-specific comp
 - Supplier or component assessment
 - Use-error / human factors assessment
 
+## Excel-style import workflow
+
+The app can analyze a single complaint or a worksheet shaped like the provided screenshot. For batch review, export the worksheet from Excel as CSV/TSV or copy the header row and data rows directly from Excel into the paste box. The importer maps these headers:
+
+- `PE - PLI #`
+- `Product Description - PE PLI`
+- `Serial/Lot # - PE PLI`
+- `Interface Details - PE`
+- `Interface Update Details - PE`
+- `Event Description - PE`
+- `Event Context`
+- `Code/LLT Desc - PE PLI`
+- `Complaint? - PE`
+- `Reportable?`
+- `Product Returned to MDT?`
+- `Rationale for no return`
+
+The batch output includes the row number, complaint identifier, product, serial/lot, required assessments, assessments to consider, and a CSV download for review or re-import into a quality workflow. Native `.xlsx` parsing is intentionally not bundled in this zero-dependency prototype; production use should add a validated workbook parser or server-side import service.
+
 ## Recommended build path
 
 1. Create a controlled assessment taxonomy with each option's SOP owner, trigger criteria, required evidence, and mandatory escalation path.
