@@ -1,4 +1,4 @@
-import { evaluateComplaint } from './assessmentRules.js';
+import { evaluateTechnicalAssessmentNeed } from './assessmentRules.js';
 import { parseDelimitedComplaints, summarizeBatch, toCsv } from './excelImport.js';
 
 const state = { rows: [], analyzed: [] };
@@ -21,16 +21,22 @@ function analyzeText() {
   const outcome = document.querySelector('#single-outcome').value;
   const patientImpact = document.querySelector('#patient-impact').checked;
   const lotKnown = document.querySelector('#lot-known').checked;
-  renderResults(evaluateComplaint({ description, product, outcome, patientImpact, lotKnown }));
+  renderResults(evaluateTechnicalAssessmentNeed({ description, product, outcome, patientImpact, lotKnown }));
 }
 
-function renderResults(results) {
+function renderResults(evaluation) {
+  const results = Array.isArray(evaluation) ? evaluation : evaluation.results;
+  const summary = document.querySelector('#decision-summary');
+  if (summary && !Array.isArray(evaluation)) {
+    summary.textContent = `${evaluation.decision} · ${evaluation.confidenceLevel} confidence (${evaluation.confidence}%)`;
+  }
   const container = document.querySelector('#single-results');
   container.replaceChildren(...results.map(result => el('article', { class: `result ${result.recommendation.toLowerCase().replaceAll(' ', '-')}` }, [
     el('div', { class: 'resultHeader' }, [el('h3', { text: result.name }), el('span', { text: result.score })]),
-    el('p', { class: 'badge', text: result.recommendation }),
+    el('p', { class: 'badge', text: `${result.recommendation} · ${result.confidenceLevel} confidence` }),
     el('p', { text: result.purpose }),
     el('p', { class: 'small', text: result.matchedKeywords.length ? `Matched: ${result.matchedKeywords.join(', ')}` : 'No direct keyword match in current facts.' }),
+    el('p', { class: 'small', text: result.rationales?.length ? `Rationale: ${result.rationales.join('; ')}` : 'Rationale: insufficient facts for a stronger recommendation.' }),
     el('details', {}, [
       el('summary', { text: 'Evidence and next actions' }),
       el('ul', {}, result.evidence.map(item => el('li', { text: item }))),
@@ -48,13 +54,16 @@ function renderBatch() {
     return;
   }
   const requiredCount = state.analyzed.filter(row => row.required.length).length;
-  summary.textContent = `${state.analyzed.length} complaints analyzed. ${requiredCount} have one or more required assessments.`;
-  table.replaceChildren(el('thead', {}, [el('tr', {}, ['Row', 'PE - PLI #', 'Product', 'Serial/Lot', 'Required assessments', 'Consider'].map(text => el('th', { text })))]),
+  const avgConfidence = Math.round(state.analyzed.reduce((sum, row) => sum + row.confidence, 0) / state.analyzed.length);
+  summary.textContent = `${state.analyzed.length} complaints analyzed. ${requiredCount} have one or more required assessments. Average confidence: ${avgConfidence}%.`;
+  table.replaceChildren(el('thead', {}, [el('tr', {}, ['Row', 'PE - PLI #', 'Product', 'Serial/Lot', 'Decision', 'Confidence', 'Required assessments', 'Consider'].map(text => el('th', { text })))]),
     el('tbody', {}, state.analyzed.map(row => el('tr', {}, [
       el('td', { text: row.rowNumber }),
       el('td', { text: row.complaintId }),
       el('td', { text: row.product }),
       el('td', { text: row.lot }),
+      el('td', { text: row.decision }),
+      el('td', { text: `${row.confidenceLevel} (${row.confidence}%)` }),
       el('td', { text: row.recommendedAssessments }),
       el('td', { text: row.considerAssessments })
     ]))));
@@ -62,7 +71,7 @@ function renderBatch() {
 
 function loadDelimitedText(text) {
   state.rows = parseDelimitedComplaints(text);
-  state.analyzed = summarizeBatch(state.rows, evaluateComplaint);
+  state.analyzed = summarizeBatch(state.rows, evaluateTechnicalAssessmentNeed);
   renderBatch();
 }
 

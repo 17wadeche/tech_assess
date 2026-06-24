@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateComplaint } from '../src/assessmentRules.js';
+import { evaluateComplaint, evaluateTechnicalAssessmentNeed } from '../src/assessmentRules.js';
 
 test('flags serious event reviews and considers software review for a serious pump software event', () => {
   const results = evaluateComplaint({
@@ -47,4 +47,19 @@ test('summarizes imported rows and exports recommendation CSV', () => {
   const csv = toCsv(analyzed);
   assert.match(csv, /Required Assessments/);
   assert.match(csv, /Complaint ID/);
+});
+
+
+test('returns an overall technical assessment decision with confidence', () => {
+  const evaluation = evaluateTechnicalAssessmentNeed({
+    description: 'During gastric bypass the suture broke at the weld while suturing and product will be returned.',
+    product: 'VLOC suture',
+    lot: 'A4F1829VY',
+    lotKnown: true,
+    returned: true
+  });
+  assert.equal(evaluation.technicalAssessmentNeeded, true);
+  assert.equal(evaluation.decision, 'Technical assessment needed');
+  assert.ok(evaluation.confidence >= 70);
+  assert.ok(evaluation.required.some(result => result.id === 'field-return-product-analysis'));
 });

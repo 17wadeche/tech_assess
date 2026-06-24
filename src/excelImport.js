@@ -78,15 +78,20 @@ export function parseDelimitedComplaints(text) {
 
 export function summarizeBatch(rows, evaluator) {
   return rows.map(row => {
-    const results = evaluator(row);
-    const required = results.filter(result => result.recommendation === 'Required');
-    const consider = results.filter(result => result.recommendation === 'Consider');
+    const evaluation = evaluator(row);
+    const results = Array.isArray(evaluation) ? evaluation : evaluation.results;
+    const required = Array.isArray(evaluation) ? results.filter(result => result.recommendation === 'Required') : evaluation.required;
+    const consider = Array.isArray(evaluation) ? results.filter(result => result.recommendation === 'Consider') : evaluation.consider;
     return {
       ...row,
       results,
       required,
       consider,
       highestScore: results[0]?.score || 0,
+      decision: Array.isArray(evaluation) ? (required.length ? 'Technical assessment needed' : consider.length ? 'Technical assessment should be considered' : 'No technical assessment indicated from current facts') : evaluation.decision,
+      confidence: Array.isArray(evaluation) ? (results[0]?.confidence || results[0]?.score || 0) : evaluation.confidence,
+      confidenceLevel: Array.isArray(evaluation) ? (results[0]?.confidenceLevel || '') : evaluation.confidenceLevel,
+      riskSignals: Array.isArray(evaluation) ? [] : evaluation.riskSignals,
       recommendedAssessments: required.map(result => result.name).join('; ') || 'No required assessment from current facts',
       considerAssessments: consider.map(result => result.name).join('; ')
     };
@@ -94,8 +99,8 @@ export function summarizeBatch(rows, evaluator) {
 }
 
 export function toCsv(rows) {
-  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Required Assessments', 'Consider Assessments', 'Top Score'];
+  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'Required Assessments', 'Consider Assessments', 'Top Score'];
   const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.recommendedAssessments, row.considerAssessments, row.highestScore].map(escape).join(','));
+  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.decision, row.confidence, row.confidenceLevel, row.recommendedAssessments, row.considerAssessments, row.highestScore].map(escape).join(','));
   return [headers.map(escape).join(','), ...body].join('\n');
 }
