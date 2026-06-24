@@ -1,19 +1,17 @@
 # Complaint technical assessment AI implementation plan
 
-This prototype uses a transparent rules taxonomy because Medtronic-specific complaint handling assessment names, thresholds, and SOP triggers are controlled internal content. To productionize it, replace the starter options with approved procedure names and validated decision logic.
+This prototype uses the assessment option names provided for the complaint-handling workflow. Production thresholds and SOP triggers should still be validated against controlled Medtronic procedures before release.
 
-## Starter technical assessment options
+## Technical assessment options
 
-- Field return / product analysis
-- Manufacturing record review (DHR/BHR)
-- Clinical / medical assessment
-- Regulatory reportability review
-- Software, firmware, or data-log assessment
-- Cybersecurity / privacy assessment
-- Sterility, biocompatibility, or contamination assessment
-- Packaging, labeling, or IFU assessment
-- Supplier or component assessment
-- Use-error / human factors assessment
+- DeviceHistory Review
+- Mfg Assessment
+- Design Assessment
+- CM/OEM Assessment
+- RiskAssessmentReview
+- PLI GEO RD Review
+- Image Review
+- Reassess - Reporting
 
 ## Excel-style import workflow
 
@@ -33,19 +31,6 @@ The app analyzes a whole workbook shaped like the provided screenshot. Upload th
 - `Rationale for no return`
 
 The batch output includes the row number, complaint identifier, product, serial/lot, technical-assessment decision, confidence, required assessments, assessments to consider, and a CSV download for review or re-import into a quality workflow. The browser parser supports standard `.xlsx` worksheet XML with shared strings and inline strings; production use should still validate the workbook parser against Medtronic-controlled templates and consider a server-side import service for very large files.
-
-
-## Hybrid rules + ML confidence design
-
-The current implementation is a hybrid-ready rules baseline: mandatory/high-risk rules protect safety-critical triggers while the scoring interface can later accept an ML/NLP probability for each assessment. The app now returns an explicit decision (`Technical assessment needed`, `Technical assessment should be considered`, or `No technical assessment indicated from current facts`) plus a numeric confidence and confidence level.
-
-Recommended production hybrid architecture:
-
-1. Keep deterministic rules for never-miss triggers such as death, serious injury, reportability flags, cybersecurity/privacy signals, sterility/contamination, product malfunction, and product return availability.
-2. Train a supervised text classifier on historical complaint rows to predict each approved assessment type from narrative, event context, code/LLT, product family, lot/serial availability, return status, reportability flag, and outcome.
-3. Blend rule scores and ML probabilities using conservative thresholds: rules can force `Required`; ML can raise `Consider` or `Required` only after validation; reviewers can override with rationale.
-4. Calibrate confidence with held-out complaints so an 80% confidence bucket is correct approximately 80% of the time. Track false negatives for each high-risk assessment separately.
-5. Store decision features, matched keywords, model version, rule version, confidence, reviewer selection, and override reason for auditability.
 
 
 ## Hybrid rules + ML confidence design
