@@ -16,10 +16,7 @@ test('uses the approved assessment option names for a serious malfunction event'
     'CM/OEM Assessment',
     'Design Assessment',
     'DeviceHistory Review',
-    'Image Review',
     'Mfg Assessment',
-    'PLI GEO RD Review',
-    'Reassess - Reporting',
     'RiskAssessmentReview'
   ]);
 });
@@ -121,5 +118,5 @@ test('parses a native XLSX workbook and analyzes every complaint row', async () 
   assert.equal(analyzed.length, 1);
   assert.equal(analyzed[0].decision, 'Technical assessment needed');
   assert.ok(analyzed[0].required.some(result => result.id === 'mfg-assessment'));
-  assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Mfg Assessment', 'Design Assessment', 'CM/OEM Assessment', 'RiskAssessmentReview', 'PLI GEO RD Review', 'Image Review', 'Reassess - Reporting'].includes(result.name)));
+  assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Mfg Assessment', 'Design Assessment', 'CM/OEM Assessment', 'RiskAssessmentReview',].includes(result.name)));
 });

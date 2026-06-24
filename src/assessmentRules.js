@@ -44,33 +44,6 @@ export const assessmentOptions = [
     evidence: ['Patient outcome', 'Hazardous situation/failure mode', 'Severity and probability rationale', 'Existing risk-control mapping'],
     defaultActions: ['Map the complaint to existing risk-analysis hazards', 'Assess whether risk files or risk-control effectiveness need review']
   },
-  {
-    id: 'pli-geo-rd-review',
-    name: 'PLI GEO RD Review',
-    owner: 'Product line / geography R&D owner',
-    purpose: 'Route product-line or geography-specific issues to the responsible R&D owner for additional review when local/product context is needed.',
-    keywords: ['pli', 'geo', 'region', 'country', 'site', 'clinic', 'hospital', 'product line', 'r&d', 'rd', 'model number', 'product family'],
-    evidence: ['Product line identifier', 'Country/region/site', 'Model number', 'Local complaint context'],
-    defaultActions: ['Identify responsible product-line/geography R&D owner', 'Request product- or region-specific input when triggered']
-  },
-  {
-    id: 'image-review',
-    name: 'Image Review',
-    owner: 'Quality engineering / product analysis',
-    purpose: 'Review available images, attachments, screenshots, or photos for visible damage, labeling, packaging, or product-condition evidence.',
-    keywords: ['image', 'photo', 'picture', 'screenshot', 'attachment', 'visible', 'label photo', 'packaging photo', 'damage shown'],
-    evidence: ['Images/photos/screenshots', 'Attachment metadata', 'Product/packaging condition shown', 'Label or UDI images'],
-    defaultActions: ['Request or review images/attachments', 'Document visible evidence and whether it supports the alleged issue']
-  },
-  {
-    id: 'reassess-reporting',
-    name: 'Reassess - Reporting',
-    owner: 'Regulatory affairs / complaint handling',
-    purpose: 'Reassess reporting when complaint facts indicate possible reportability changes, patient impact, malfunction, or new follow-up information.',
-    keywords: ['reportable', 'reassess', 'mdr', 'vigilance', 'death', 'serious injury', 'hospitalized', 'hospitalization', 'intervention', 'malfunction', 'no injury', 'patient outcome', 'follow-up'],
-    evidence: ['Reportability flag', 'Patient outcome', 'New or changed facts', 'Device contribution and recurrence rationale'],
-    defaultActions: ['Reassess reporting decision against current facts', 'Document rationale and any reporting-clock impact']
-  }
 ];
 
 const highRiskPatterns = [/death|died/i, /serious injury|hospital/i, /intervention|surgery/i, /reportable|mdr|vigilance/i];

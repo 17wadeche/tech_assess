@@ -9,9 +9,6 @@ This prototype uses the assessment option names provided for the complaint-handl
 - Design Assessment
 - CM/OEM Assessment
 - RiskAssessmentReview
-- PLI GEO RD Review
-- Image Review
-- Reassess - Reporting
 
 ## Excel-style import workflow
 
