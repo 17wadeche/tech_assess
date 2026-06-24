@@ -78,15 +78,20 @@ export function parseDelimitedComplaints(text) {
 
 export function summarizeBatch(rows, evaluator) {
   return rows.map(row => {
-    const results = evaluator(row);
-    const required = results.filter(result => result.recommendation === 'Required');
-    const consider = results.filter(result => result.recommendation === 'Consider');
+    const evaluation = evaluator(row);
+    const results = Array.isArray(evaluation) ? evaluation : evaluation.results;
+    const required = Array.isArray(evaluation) ? results.filter(result => result.recommendation === 'Required') : evaluation.required;
+    const consider = Array.isArray(evaluation) ? results.filter(result => result.recommendation === 'Consider') : evaluation.consider;
     return {
       ...row,
       results,
       required,
       consider,
       highestScore: results[0]?.score || 0,
+      decision: Array.isArray(evaluation) ? (required.length ? 'Technical assessment needed' : consider.length ? 'Technical assessment should be considered' : 'No technical assessment indicated from current facts') : evaluation.decision,
+      confidence: Array.isArray(evaluation) ? (results[0]?.confidence || results[0]?.score || 0) : evaluation.confidence,
+      confidenceLevel: Array.isArray(evaluation) ? (results[0]?.confidenceLevel || '') : evaluation.confidenceLevel,
+      riskSignals: Array.isArray(evaluation) ? [] : evaluation.riskSignals,
       recommendedAssessments: required.map(result => result.name).join('; ') || 'No required assessment from current facts',
       considerAssessments: consider.map(result => result.name).join('; ')
     };
@@ -94,8 +99,127 @@ export function summarizeBatch(rows, evaluator) {
 }
 
 export function toCsv(rows) {
-  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Required Assessments', 'Consider Assessments', 'Top Score'];
+  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'Required Assessments', 'Consider Assessments', 'Top Score'];
   const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.recommendedAssessments, row.considerAssessments, row.highestScore].map(escape).join(','));
+  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.decision, row.confidence, row.confidenceLevel, row.recommendedAssessments, row.considerAssessments, row.highestScore].map(escape).join(','));
   return [headers.map(escape).join(','), ...body].join('\n');
+}
+
+function textDecoder() {
+  return new TextDecoder('utf-8');
+}
+
+function readUint16(view, offset) {
+  return view.getUint16(offset, true);
+}
+
+function readUint32(view, offset) {
+  return view.getUint32(offset, true);
+}
+
+function decodeXmlEntities(value) {
+  return String(value || '')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'")
+    .replaceAll('&amp;', '&');
+}
+
+function stripTags(value) {
+  return decodeXmlEntities(String(value || '').replace(/<[^>]+>/g, ''));
+}
+
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream !== 'undefined') {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  if (typeof process !== 'undefined') {
+    const { inflateRawSync } = await import('node:zlib');
+    return new Uint8Array(inflateRawSync(bytes));
+  }
+  throw new Error('This environment cannot decompress XLSX files. Use a modern browser or server-side import.');
+}
+
+async function unzipEntries(arrayBuffer) {
+  const view = new DataView(arrayBuffer);
+  let eocdOffset = -1;
+  for (let offset = view.byteLength - 22; offset >= Math.max(0, view.byteLength - 65558); offset -= 1) {
+    if (readUint32(view, offset) === 0x06054b50) {
+      eocdOffset = offset;
+      break;
+    }
+  }
+  if (eocdOffset < 0) throw new Error('Invalid XLSX file: ZIP directory not found.');
+
+  const entryCount = readUint16(view, eocdOffset + 10);
+  let centralOffset = readUint32(view, eocdOffset + 16);
+  const entries = new Map();
+  for (let index = 0; index < entryCount; index += 1) {
+    if (readUint32(view, centralOffset) !== 0x02014b50) throw new Error('Invalid XLSX file: ZIP central directory is malformed.');
+    const method = readUint16(view, centralOffset + 10);
+    const compressedSize = readUint32(view, centralOffset + 20);
+    const fileNameLength = readUint16(view, centralOffset + 28);
+    const extraLength = readUint16(view, centralOffset + 30);
+    const commentLength = readUint16(view, centralOffset + 32);
+    const localHeaderOffset = readUint32(view, centralOffset + 42);
+    const fileNameBytes = new Uint8Array(arrayBuffer, centralOffset + 46, fileNameLength);
+    const fileName = textDecoder().decode(fileNameBytes);
+
+    const localNameLength = readUint16(view, localHeaderOffset + 26);
+    const localExtraLength = readUint16(view, localHeaderOffset + 28);
+    const dataOffset = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    const compressed = new Uint8Array(arrayBuffer, dataOffset, compressedSize);
+    let data;
+    if (method === 0) data = compressed;
+    else if (method === 8) data = await inflateRaw(compressed);
+    else throw new Error(`Unsupported XLSX ZIP compression method ${method}.`);
+    entries.set(fileName, textDecoder().decode(data));
+    centralOffset += 46 + fileNameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+
+function parseSharedStrings(xml = '') {
+  return [...xml.matchAll(/<si[\s\S]*?<\/si>/g)].map(match => {
+    const textRuns = [...match[0].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(text => decodeXmlEntities(text[1]));
+    return textRuns.join('');
+  });
+}
+
+function columnIndex(cellRef) {
+  const letters = String(cellRef || '').match(/[A-Z]+/i)?.[0] || 'A';
+  return [...letters.toUpperCase()].reduce((sum, char) => sum * 26 + char.charCodeAt(0) - 64, 0) - 1;
+}
+
+function parseSheetRows(xml = '', sharedStrings = []) {
+  return [...xml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)].map(rowMatch => {
+    const cells = [];
+    for (const cellMatch of rowMatch[1].matchAll(/<c([^>]*)>([\s\S]*?)<\/c>/g)) {
+      const attrs = cellMatch[1];
+      const body = cellMatch[2];
+      const ref = attrs.match(/\sr="([^"]+)"/)?.[1];
+      const type = attrs.match(/\st="([^"]+)"/)?.[1];
+      const valueMatch = body.match(/<v[^>]*>([\s\S]*?)<\/v>/);
+      const inlineMatch = body.match(/<is[^>]*>([\s\S]*?)<\/is>/);
+      let value = '';
+      if (type === 's' && valueMatch) value = sharedStrings[Number(valueMatch[1])] || '';
+      else if (type === 'inlineStr' && inlineMatch) value = stripTags(inlineMatch[1]);
+      else if (valueMatch) value = decodeXmlEntities(valueMatch[1]);
+      cells[columnIndex(ref)] = value;
+    }
+    return cells.map(cell => cell || '');
+  }).filter(row => row.some(Boolean));
+}
+
+export async function parseXlsxComplaints(arrayBuffer) {
+  const entries = await unzipEntries(arrayBuffer);
+  const sheetName = [...entries.keys()].find(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name));
+  if (!sheetName) throw new Error('No worksheet found in XLSX file.');
+  const sharedStrings = parseSharedStrings(entries.get('xl/sharedStrings.xml'));
+  const rows = parseSheetRows(entries.get(sheetName), sharedStrings);
+  if (rows.length < 2) return [];
+  const delimited = rows.map(row => row.map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join('\t')).join('\n');
+  return parseDelimitedComplaints(delimited);
 }
