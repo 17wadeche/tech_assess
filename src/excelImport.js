@@ -109,15 +109,16 @@ export function summarizeBatch(rows, evaluator) {
       confidenceLevel: Array.isArray(evaluation) ? (results[0]?.confidenceLevel || '') : evaluation.confidenceLevel,
       riskSignals: Array.isArray(evaluation) ? [] : evaluation.riskSignals,
       recommendedAssessments: required.map(result => result.name).join('; ') || 'No required assessment from current facts',
-      considerAssessments: consider.map(result => result.name).join('; ')
+      considerAssessments: consider.map(result => result.name).join('; '),
+      rationaleSummary: results.map(result => `${result.name}: ${result.recommendation}${result.rationales?.length ? ` — ${result.rationales.join('; ')}` : ''}`).join(' | ')
     };
   });
 }
 
 export function toCsv(rows) {
-  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'Required Assessments', 'Consider Assessments', 'Top Score'];
+  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'Required Assessments', 'Consider Assessments', 'Top Score', 'Why'];
   const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.decision, row.confidence, row.confidenceLevel, row.recommendedAssessments, row.considerAssessments, row.highestScore].map(escape).join(','));
+  const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.decision, row.confidence, row.confidenceLevel, row.recommendedAssessments, row.considerAssessments, row.highestScore, row.rationaleSummary].map(escape).join(','));
   return [headers.map(escape).join(','), ...body].join('\n');
 }
 

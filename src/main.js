@@ -27,7 +27,7 @@ function renderBatch() {
   const requiredCount = state.analyzed.filter(row => row.required.length).length;
   const avgConfidence = Math.round(state.analyzed.reduce((sum, row) => sum + row.confidence, 0) / state.analyzed.length);
   summary.textContent = `${state.analyzed.length} rows analyzed. ${neededCount} need a technical assessment. ${requiredCount} have one or more required assessment types. Average confidence: ${avgConfidence}%.`;
-  table.replaceChildren(el('thead', {}, [el('tr', {}, ['Row', 'PE - PLI #', 'Product', 'Serial/Lot', 'Decision', 'Confidence', 'Required assessments', 'Consider'].map(text => el('th', { text })))]),
+  table.replaceChildren(el('thead', {}, [el('tr', {}, ['Row', 'PE - PLI #', 'Product', 'Serial/Lot', 'Decision', 'Confidence', 'Required assessments', 'Consider', 'Why'].map(text => el('th', { text })))]),
     el('tbody', {}, state.analyzed.map(row => el('tr', {}, [
       el('td', { text: row.rowNumber }),
       el('td', { text: row.complaintId }),
@@ -36,7 +36,8 @@ function renderBatch() {
       el('td', { text: row.decision }),
       el('td', { text: `${row.confidenceLevel} (${row.confidence}%)` }),
       el('td', { text: row.recommendedAssessments }),
-      el('td', { text: row.considerAssessments })
+      el('td', { text: row.considerAssessments }),
+      el('td', { text: row.rationaleSummary })
     ]))));
 }
 
