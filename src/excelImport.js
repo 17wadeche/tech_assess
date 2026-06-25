@@ -104,7 +104,7 @@ export function summarizeBatch(rows, evaluator) {
       required,
       consider,
       highestScore: results[0]?.score || 0,
-      decision: Array.isArray(evaluation) ? (required.length ? 'Technical assessment needed' : consider.length ? 'Technical assessment should be considered' : 'No technical assessment indicated from current facts') : evaluation.decision,
+      decision: Array.isArray(evaluation) ? (required.length ? 'DHR needed' : consider.length ? 'DHR should be considered' : 'No DHR indicated from current facts') : evaluation.decision,
       confidence: Array.isArray(evaluation) ? (results[0]?.confidence || results[0]?.score || 0) : evaluation.confidence,
       confidenceLevel: Array.isArray(evaluation) ? (results[0]?.confidenceLevel || '') : evaluation.confidenceLevel,
       riskSignals: Array.isArray(evaluation) ? [] : evaluation.riskSignals,
@@ -116,7 +116,7 @@ export function summarizeBatch(rows, evaluator) {
 }
 
 export function toCsv(rows) {
-  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'Required Assessments', 'Consider Assessments', 'Top Score', 'Why'];
+  const headers = ['Row', 'Complaint ID', 'Product', 'Lot/Serial', 'Decision', 'Confidence', 'Confidence Level', 'DHR Needed', 'Consider', 'Top Score', 'Why'];
   const escape = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
   const body = rows.map(row => [row.rowNumber, row.complaintId, row.product, row.lot, row.decision, row.confidence, row.confidenceLevel, row.recommendedAssessments, row.considerAssessments, row.highestScore, row.rationaleSummary].map(escape).join(','));
   return [headers.map(escape).join(','), ...body].join('\n');

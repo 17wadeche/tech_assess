@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AlertTriangle, ClipboardCheck, FileSearch, ShieldCheck } from 'lucide-react';
-import { assessmentOptions, evaluateComplaint } from './assessmentRules.js';
+import { evaluateComplaint } from './assessmentRules.js';
 import './styles.css';
 
-const example = `Clinician reports the pump alarmed with error code 402 and stopped during therapy. Patient was hospitalized overnight for monitoring. Device is available for return. Lot AB123, software v3.2.`;
+const example = `According to the reporter, the device was failure out of box. Product was not returned because it is still in use. Lot AB123.`;
 
 function App() {
   const [form, setForm] = useState({ description: example, product: '', outcome: '', patientImpact: true, lotKnown: true });
@@ -17,10 +17,10 @@ function App() {
     <section className="hero">
       <div>
         <p className="eyebrow">Complaint handling decision support</p>
-        <h1>Technical assessment recommender</h1>
-        <p className="lede">A configurable prototype that screens complaint narratives and identifies likely technical, medical, regulatory, and quality assessments. Replace the starter taxonomy with your approved Medtronic procedure terms before production use.</p>
+        <h1>DHR need checker</h1>
+        <p className="lede">A configurable prototype that screens complaint facts against Device History Record business rules and shows whether a DHR review is needed. Replace the starter logic with your approved Medtronic procedure terms before production use.</p>
       </div>
-      <div className="heroCard"><ShieldCheck /><strong>{required.length}</strong><span>assessments currently flagged as required</span></div>
+      <div className="heroCard"><ShieldCheck /><strong>{required.length ? 'Yes' : 'No'}</strong><span>DHR currently flagged as needed</span></div>
     </section>
 
     <section className="grid">
@@ -36,7 +36,7 @@ function App() {
       </form>
 
       <section className="panel">
-        <h2><ClipboardCheck /> Recommended assessment plan</h2>
+        <h2><ClipboardCheck /> DHR recommendation</h2>
         <div className="cards">
           {results.map(result => <article key={result.id} className={`result ${result.recommendation.toLowerCase().replaceAll(' ', '-')}`}>
             <div className="resultHeader"><h3>{result.name}</h3><span>{result.score}</span></div>
@@ -56,9 +56,9 @@ function App() {
       <h2><AlertTriangle /> Implementation guardrails</h2>
       <ul>
         <li>Keep the model advisory: the complaint owner remains accountable for final assessment selection.</li>
-        <li>Map each option to controlled SOP names, business rules, reportability clocks, and product-family procedures.</li>
-        <li>Validate with historical complaints, measure missed required assessments, and require quality/regulatory sign-off before release.</li>
-        <li>Store rationale, matched facts, model/rule version, reviewer override, and audit trail for every recommendation.</li>
+        <li>Map the DHR decision to controlled SOP names, business rules, reportability clocks, and product-family procedures.</li>
+        <li>Validate with historical complaints, measure missed required DHR reviews, and require quality/regulatory sign-off before release.</li>
+        <li>Store rationale, matched facts, rule version, reviewer override, and audit trail for every DHR recommendation.</li>
       </ul>
     </section>
   </main>;

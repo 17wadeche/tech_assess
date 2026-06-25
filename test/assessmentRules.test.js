@@ -2,17 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateComplaint, evaluateTechnicalAssessmentNeed, evaluateDhrNeed } from '../src/assessmentRules.js';
 
-test('only uses the four requested technical assessment option names', () => {
+test('only shows the DeviceHistory Review option', () => {
   const results = evaluateComplaint({
     description: 'Pump stopped with error code and patient was hospitalized.',
     patientImpact: true,
     lotKnown: false
   });
-  assert.ok(results.some(result => result.id === 'design-assessment'));
-  assert.deepEqual([...results.map(result => result.name)].sort(), [
-    'Design Assessment',
-    'DeviceHistory Review',
-  ]);
+  assert.deepEqual(results.map(result => result.id), ['device-history-review']);
+  assert.deepEqual(results.map(result => result.name), ['DeviceHistory Review']);
 });
 
 test('requires DeviceHistory Review only when all DHR conditions pass and no exclusion applies', () => {
@@ -44,37 +41,6 @@ test('excludes DeviceHistory Review for unknown lot or excluded RFR', () => {
   assert.equal(evaluateDhrNeed({ ...base, lotNumber: 'UNKNOWN', rfr: 'Instrument did not work' }).required, false);
   assert.equal(evaluateDhrNeed({ ...base, lotNumber: 'LOT123', rfr: 'Not a Complaint' }).required, false);
 });
-
-test('explains why Design Assessment is indicated for recurring product damage', () => {
-  const results = evaluateComplaint({ description: 'Same lot has multiple cracked connectors', product: 'connector set', lotKnown: true });
-  const design = results.find(result => result.id === 'design-assessment');
-  assert.ok(['Required', 'Consider'].includes(design.recommendation));
-  assert.ok(design.score > 0);
-  assert.ok(design.rationales.some(reason => reason.includes('Recurring issue or trend')));
-  assert.ok(design.rationales.some(reason => reason.includes('Physical integrity affecting performance')));
-});
-test('requires Design Assessment for possible new or unanticipated device or software issues', () => {
-  const evaluation = evaluateTechnicalAssessmentNeed({
-    description: 'Investigation notes describe a new unanticipated software issue where the app skipped a safety prompt after update.',
-    product: 'therapy app',
-    lotKnown: true
-  });
-  const design = evaluation.required.find(result => result.id === 'design-assessment');
-  assert.ok(design);
-  assert.ok(design.rationales.some(reason => reason.includes('Possible new or unanticipated device/software issue')));
-});
-
-test('requires Design Assessment for further-action-related issues outside existing action scope', () => {
-  const evaluation = evaluateTechnicalAssessmentNeed({
-    description: 'The event is related to a previous further action but the new model does not meet the inclusion criteria for that action and shows a similar failure mode.',
-    product: 'new model controller',
-    lotKnown: true
-  });
-  const design = evaluation.required.find(result => result.id === 'design-assessment');
-  assert.ok(design);
-  assert.ok(design.rationales.some(reason => reason.includes('Further-action-related issue outside existing scope')));
-});
-
 
 import { parseDelimitedComplaints, summarizeBatch, toCsv } from '../src/excelImport.js';
 
@@ -115,30 +81,33 @@ test('requires DeviceHistory Review when Product Returned to MDT is N and ration
 });
 
 test('summarizes imported rows and exports recommendation CSV', () => {
-  const rows = parseDelimitedComplaints('PE - PLI #,Product Description - PE PLI,Serial/Lot # - PE PLI,Event Description - PE,Code/LLT Desc - PE PLI,Product Returned to MDT?\n1,Pump,LOT1,Patient hospitalized after error code alarm,DEVICE DID NOT ACTIVATE,Y');
+  const rows = parseDelimitedComplaints('PE - PLI #,Product Description - PE PLI,Serial/Lot # - PE PLI,Event Description - PE,Brief Description – PE,Reportable?,Product Returned to MDT?,Rationale for no return,Labeled for Single Use – PE PLI PM,RFR\n1,Pump,LOT1,Failure out of box,OUT OF BOX failure,Yes,N,Still in Use,Y,Instrument did not work');
   const analyzed = summarizeBatch(rows, evaluateComplaint);
   assert.equal(analyzed.length, 1);
   assert.ok(analyzed[0].required.length > 0);
   const csv = toCsv(analyzed);
-  assert.match(csv, /Required Assessments/);
+  assert.match(csv, /DHR Needed/);
   assert.match(csv, /Complaint ID/);
   assert.match(csv, /Why/);
 });
 
 
-test('returns an overall technical assessment decision with confidence', () => {
+test('returns an overall DHR decision with confidence', () => {
   const evaluation = evaluateTechnicalAssessmentNeed({
-    description: 'During gastric bypass the suture broke at the weld while suturing and product will be returned.',
-    product: 'VLOC suture',
-    lot: 'A4F1829VY',
-    lotKnown: true,
-    returned: true
+    description: 'According to the reporter, the device was failure out of box.',
+    briefDescription: 'OUT OF BOX failure',
+    reportable: true,
+    returned: false,
+    noReturnRationale: 'Still in Use',
+    lotNumber: 'LOT123',
+    labeledSingleUse: 'Y',
+    rfr: 'Instrument did not work'
   });
   assert.equal(evaluation.technicalAssessmentNeeded, true);
-  assert.equal(evaluation.decision, 'Technical assessment needed');
+  assert.equal(evaluation.decision, 'DHR needed');
   assert.ok(evaluation.confidence >= 70);
-  assert.ok(evaluation.required.some(result => result.id === 'design-assessment'));
-  assert.ok(evaluation.required.find(result => result.id === 'design-assessment').rationales.length > 0);
+  assert.deepEqual(evaluation.required.map(result => result.id), ['device-history-review']);
+  assert.ok(evaluation.required[0].rationales.length > 0);
 });
 
 function makeStoredZip(files) {
@@ -181,15 +150,15 @@ function makeStoredZip(files) {
 test('parses a native XLSX workbook and analyzes every complaint row', async () => {
   const { parseXlsxComplaints } = await import('../src/excelImport.js');
   const sheet = `<?xml version="1.0" encoding="UTF-8"?><worksheet><sheetData>
-    <row r="1"><c r="A1" t="inlineStr"><is><t>PE - PLI #</t></is></c><c r="B1" t="inlineStr"><is><t>Product Description - PE PLI</t></is></c><c r="C1" t="inlineStr"><is><t>Serial/Lot # - PE PLI</t></is></c><c r="D1" t="inlineStr"><is><t>Event Description - PE</t></is></c><c r="E1" t="inlineStr"><is><t>Code/LLT Desc - PE PLI</t></is></c><c r="F1" t="inlineStr"><is><t>Product Returned to MDT?</t></is></c></row>
-    <row r="2"><c r="A2" t="inlineStr"><is><t>0708488532-10</t></is></c><c r="B2" t="inlineStr"><is><t>VLOC suture</t></is></c><c r="C2" t="inlineStr"><is><t>A4F1829VY</t></is></c><c r="D2" t="inlineStr"><is><t>Suture broke during use and product will be returned.</t></is></c><c r="E2" t="inlineStr"><is><t>NEEDLE DETACHED</t></is></c><c r="F2" t="inlineStr"><is><t>Y</t></is></c></row>
+    <row r="1"><c r="A1" t="inlineStr"><is><t>PE - PLI #</t></is></c><c r="B1" t="inlineStr"><is><t>Product Description - PE PLI</t></is></c><c r="C1" t="inlineStr"><is><t>Serial/Lot # - PE PLI</t></is></c><c r="D1" t="inlineStr"><is><t>Event Description - PE</t></is></c><c r="E1" t="inlineStr"><is><t>Code/LLT Desc - PE PLI</t></is></c><c r="F1" t="inlineStr"><is><t>Reportable?</t></is></c><c r="G1" t="inlineStr"><is><t>Product Returned to MDT?</t></is></c><c r="H1" t="inlineStr"><is><t>Rationale for no return</t></is></c><c r="I1" t="inlineStr"><is><t>Labeled for Single Use – PE PLI PM</t></is></c></row>
+    <row r="2"><c r="A2" t="inlineStr"><is><t>0708488532-10</t></is></c><c r="B2" t="inlineStr"><is><t>VLOC suture</t></is></c><c r="C2" t="inlineStr"><is><t>A4F1829VY</t></is></c><c r="D2" t="inlineStr"><is><t>Failure out of box and product was not returned.</t></is></c><c r="E2" t="inlineStr"><is><t>OUT OF BOX FAILURE</t></is></c><c r="F2" t="inlineStr"><is><t>Yes</t></is></c><c r="G2" t="inlineStr"><is><t>N</t></is></c><c r="H2" t="inlineStr"><is><t>Still in Use</t></is></c><c r="I2" t="inlineStr"><is><t>Y</t></is></c></row>
   </sheetData></worksheet>`;
   const workbook = makeStoredZip({ 'xl/worksheets/sheet1.xml': sheet });
   const rows = await parseXlsxComplaints(workbook);
   const analyzed = summarizeBatch(rows, evaluateTechnicalAssessmentNeed);
   assert.equal(analyzed.length, 1);
-  assert.equal(analyzed[0].decision, 'Technical assessment needed');
-  assert.ok(analyzed[0].required.some(result => result.id === 'design-assessment'));
-  assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Design Assessment'].includes(result.name)));
-  assert.match(analyzed[0].rationaleSummary, /Design Assessment:/);
+  assert.equal(analyzed[0].decision, 'DHR needed');
+  assert.deepEqual(analyzed[0].required.map(result => result.id), ['device-history-review']);
+  assert.ok(analyzed[0].required.every(result => result.name === 'DeviceHistory Review'));
+  assert.doesNotMatch(analyzed[0].rationaleSummary, /Design Assessment:/);
 });
