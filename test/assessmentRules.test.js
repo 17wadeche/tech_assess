@@ -1,24 +1,50 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateComplaint, evaluateTechnicalAssessmentNeed } from '../src/assessmentRules.js';
+import { evaluateComplaint, evaluateTechnicalAssessmentNeed, evaluateDhrNeed } from '../src/assessmentRules.js';
 
-test('uses the approved assessment option names for a serious malfunction event', () => {
+test('only uses the four requested technical assessment option names', () => {
   const results = evaluateComplaint({
-    description: 'Pump stopped with error code and patient was hospitalized. Device is available for return.',
+    description: 'Pump stopped with error code and patient was hospitalized.',
     patientImpact: true,
     lotKnown: false
   });
-  const required = results.filter(result => result.recommendation === 'Required').map(result => result.id);
-  assert.ok(required.includes('risk-assessment-review'));
-  assert.ok(required.includes('reassess-reporting'));
-  assert.ok(required.includes('design-assessment'));
+  assert.ok(results.some(result => result.id === 'design-assessment'));
   assert.deepEqual([...results.map(result => result.name)].sort(), [
     'CM/OEM Assessment',
     'Design Assessment',
     'DeviceHistory Review',
-    'Mfg Assessment',
-    'RiskAssessmentReview'
+    'Mfg Assessment'
   ]);
+});
+
+test('requires DeviceHistory Review only when all DHR conditions pass and no exclusion applies', () => {
+  const evaluation = evaluateTechnicalAssessmentNeed({
+    description: 'According to the reporter, the device was failure out of box.',
+    briefDescription: 'OUT OF BOX failure',
+    reportable: true,
+    returned: false,
+    noReturnRationale: 'Still in Use',
+    lotNumber: 'LOT123',
+    labeledSingleUse: 'Y',
+    rfr: 'Instrument did not work'
+  });
+  assert.equal(evaluateDhrNeed({
+    description: 'According to the reporter, the device was failure out of box.',
+    briefDescription: 'OUT OF BOX failure',
+    reportable: true,
+    returned: false,
+    noReturnRationale: 'Still in Use',
+    lotNumber: 'LOT123',
+    labeledSingleUse: 'Y',
+    rfr: 'Instrument did not work'
+  }).required, true);
+  assert.ok(evaluation.required.some(result => result.id === 'device-history-review'));
+});
+
+test('excludes DeviceHistory Review for unknown lot or excluded RFR', () => {
+  const base = { reportable: true, returned: false, noReturnRationale: 'Still in Use', labeledSingleUse: 'Y' };
+  assert.equal(evaluateDhrNeed({ ...base, lotNumber: 'UNKNOWN', rfr: 'Instrument did not work' }).required, false);
+  assert.equal(evaluateDhrNeed({ ...base, lotNumber: 'LOT123', rfr: 'Not a Complaint' }).required, false);
 });
 
 test('considers Mfg Assessment when lot information and product damage are known', () => {
@@ -42,6 +68,28 @@ test('parses Excel-exported complaint rows using screenshot-style headers', () =
   assert.equal(rows[0].lotKnown, true);
   assert.equal(rows[0].returned, true);
   assert.equal(rows[0].reportable, true);
+});
+
+
+
+test('does not require DeviceHistory Review when Product Returned to MDT is Y in PE PLI import column', () => {
+  const rows = parseDelimitedComplaints([
+    'PE - PLI #	Product Description - PE PLI	Lot Number – PE PLI	Brief Description – PE	Reportable?	Product Returned to MDT? – PE PLI	Rationale for no return – PE PLI	Labeled for Single Use – PE PLI PM	RFR',
+    '0706730185-10	EGIA60AVM	LOT123	OUT OF BOX failure	Yes	Y	Still in Use	Y	Instrument did not work'
+  ].join('\n'));
+  const evaluation = evaluateTechnicalAssessmentNeed(rows[0]);
+  assert.equal(rows[0].returned, true);
+  assert.ok(!evaluation.required.some(result => result.id === 'device-history-review'));
+});
+
+test('requires DeviceHistory Review when Product Returned to MDT is N and rationale is allowed', () => {
+  const rows = parseDelimitedComplaints([
+    'PE - PLI #	Product Description - PE PLI	Lot Number – PE PLI	Brief Description – PE	Reportable?	Product Returned to MDT? – PE PLI	Rationale for no return – PE PLI	Labeled for Single Use – PE PLI PM	RFR',
+    '0706730185-10	EGIA60AVM	LOT123	OUT OF BOX failure	Yes	N	Still in Use	Y	Instrument did not work'
+  ].join('\n'));
+  const evaluation = evaluateTechnicalAssessmentNeed(rows[0]);
+  assert.equal(rows[0].returned, false);
+  assert.ok(evaluation.required.some(result => result.id === 'device-history-review'));
 });
 
 test('summarizes imported rows and exports recommendation CSV', () => {
@@ -118,5 +166,5 @@ test('parses a native XLSX workbook and analyzes every complaint row', async () 
   assert.equal(analyzed.length, 1);
   assert.equal(analyzed[0].decision, 'Technical assessment needed');
   assert.ok(analyzed[0].required.some(result => result.id === 'mfg-assessment'));
-  assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Mfg Assessment', 'Design Assessment', 'CM/OEM Assessment', 'RiskAssessmentReview',].includes(result.name)));
+  assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Mfg Assessment', 'Design Assessment', 'CM/OEM Assessment'].includes(result.name)));
 });

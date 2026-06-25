@@ -2,15 +2,21 @@ const columnAliases = {
   complaintId: ['pe - pli #', 'pe pli #', 'complaint id', 'complaint #', 'record id'],
   product: ['product description - pe pli', 'product description', 'product'],
   lot: ['serial/lot # - pe pli', 'serial/lot #', 'serial lot', 'lot', 'serial'],
+  serialNumber: ['serial number – pe pli', 'serial number - pe pli', 'serial number', 'serial'],
+  lotNumber: ['lot number – pe pli', 'lot number - pe pli', 'lot number', 'lot'],
   interfaceDetails: ['interface details - pe', 'interface details'],
+  briefDescription: ['brief description – pe', 'brief description - pe', 'brief description'],
   updateDetails: ['interface update details - pe', 'interface update details'],
   description: ['event description - pe', 'event description', 'description', 'narrative'],
   eventContext: ['event context', 'event context - pe'],
   codeDescription: ['code/llt desc - pe pli', 'code/llt desc', 'code description'],
   complaint: ['complaint? - pe', 'complaint?'],
-  reportable: ['reportable?', 'reportable'],
-  returned: ['product returned to mdt?', 'product returned', 'returned'],
-  noReturnRationale: ['rationale for no return', 'no return rationale']
+  reportable: ['reportable?', 'reportable? - pe pli', 'reportable', 'reportable - pe pli'],
+  returned: ['product returned to mdt? – pe pli', 'product returned to mdt? - pe pli', 'product returned to mdt?', 'product returned', 'returned'],
+  noReturnRationale: ['rationale for no return – pe pli', 'rationale for no return - pe pli', 'rationale for no return', 'no return rationale'],
+  labeledSingleUse: ['labeled for single use – pe pli pm', 'labeled for single use - pe pli pm', 'labeled for single use'],
+  rfr: ['rfr', 'reason for review', 'review finding reason'],
+  lotBasedProduct: ['product is a lot-based product', 'lot-based product', 'lot based product']
 };
 
 function normalizeHeader(value) {
@@ -64,13 +70,23 @@ export function parseDelimitedComplaints(text) {
       rowNumber: rowIndex + 2,
       complaintId: get('complaintId'),
       product: get('product'),
-      lot: get('lot'),
-      description: [get('description'), get('interfaceDetails'), get('updateDetails'), get('eventContext'), get('codeDescription'), get('noReturnRationale')].filter(Boolean).join(' '),
+      lot: get('lot') || get('lotNumber') || get('serialNumber'),
+      serialNumber: get('serialNumber'),
+      lotNumber: get('lotNumber'),
+      briefDescription: get('briefDescription'),
+      interfaceDetails: get('interfaceDetails'),
+      eventContext: get('eventContext'),
+      codeDescription: get('codeDescription'),
+      noReturnRationale: get('noReturnRationale'),
+      labeledSingleUse: get('labeledSingleUse'),
+      rfr: get('rfr'),
+      lotBasedProduct: /^y|yes|true$/i.test(get('lotBasedProduct')),
+      description: [get('description'), get('briefDescription'), get('interfaceDetails'), get('updateDetails'), get('eventContext'), get('codeDescription')].filter(Boolean).join(' '),
       outcome: get('codeDescription'),
       patientImpact: /death|injur|hospital|intervention|surgery|medical|patient/i.test(`${get('description')} ${get('codeDescription')} ${get('updateDetails')}`),
-      lotKnown: Boolean(get('lot')) && !/^unknown$/i.test(get('lot')),
-      returned: /^y|yes|true$/i.test(get('returned')),
-      reportable: /^y|yes|true$/i.test(get('reportable')),
+      lotKnown: Boolean(get('lot') || get('lotNumber') || get('serialNumber')) && !/^unknown$/i.test(get('lot') || get('lotNumber') || get('serialNumber')),
+      returned: get('returned') ? /^y|yes|true$/i.test(get('returned')) : undefined,
+      reportable: get('reportable') ? /^y|yes|true$/i.test(get('reportable')) : undefined,
       raw: Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']))
     };
   }).filter(row => row.complaintId || row.description || row.product);
