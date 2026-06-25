@@ -11,8 +11,8 @@ const columnAliases = {
   eventContext: ['event context', 'event context - pe'],
   codeDescription: ['code/llt desc - pe pli', 'code/llt desc', 'code description'],
   complaint: ['complaint? - pe', 'complaint?'],
-  reportable: ['reportable?', 'reportable'],
-  returned: ['product returned to mdt?', 'product returned', 'returned'],
+  reportable: ['reportable?', 'reportable? - pe pli', 'reportable', 'reportable - pe pli'],
+  returned: ['product returned to mdt? – pe pli', 'product returned to mdt? - pe pli', 'product returned to mdt?', 'product returned', 'returned'],
   noReturnRationale: ['rationale for no return – pe pli', 'rationale for no return - pe pli', 'rationale for no return', 'no return rationale'],
   labeledSingleUse: ['labeled for single use – pe pli pm', 'labeled for single use - pe pli pm', 'labeled for single use'],
   rfr: ['rfr', 'reason for review', 'review finding reason'],
@@ -85,8 +85,8 @@ export function parseDelimitedComplaints(text) {
       outcome: get('codeDescription'),
       patientImpact: /death|injur|hospital|intervention|surgery|medical|patient/i.test(`${get('description')} ${get('codeDescription')} ${get('updateDetails')}`),
       lotKnown: Boolean(get('lot') || get('lotNumber') || get('serialNumber')) && !/^unknown$/i.test(get('lot') || get('lotNumber') || get('serialNumber')),
-      returned: /^y|yes|true$/i.test(get('returned')),
-      reportable: /^y|yes|true$/i.test(get('reportable')),
+      returned: get('returned') ? /^y|yes|true$/i.test(get('returned')) : undefined,
+      reportable: get('reportable') ? /^y|yes|true$/i.test(get('reportable')) : undefined,
       raw: Object.fromEntries(headers.map((header, index) => [header, cells[index] || '']))
     };
   }).filter(row => row.complaintId || row.description || row.product);

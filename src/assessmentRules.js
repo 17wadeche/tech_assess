@@ -46,6 +46,7 @@ const evidenceFields = ['description', 'product', 'lot'];
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
 function confidenceLabel(score) { if (score >= 80) return 'High'; if (score >= 55) return 'Medium'; if (score >= 30) return 'Low'; return 'Very low'; }
 function yes(value) { return value === true || /^y|yes|true$/i.test(String(value || '').trim()); }
+function no(value) { return value === false || /^n|no|false$/i.test(String(value || '').trim()); }
 function known(value) { return Boolean(String(value || '').trim()) && !/^unknown|n\/a|na$/i.test(String(value).trim()); }
 function normalize(value) { return String(value || '').trim().toLowerCase(); }
 function buildText(input) { return `${input?.description || ''} ${input?.briefDescription || ''} ${input?.interfaceDetails || ''} ${input?.eventContext || ''} ${input?.codeDescription || ''} ${input?.product || ''} ${input?.outcome || ''}`.toLowerCase(); }
@@ -54,7 +55,7 @@ export function evaluateDhrNeed(input = {}) {
   const text = buildText(input);
   const lotOrSerialKnown = known(input.serialNumber) || known(input.lotNumber) || known(input.lot);
   const reportable = yes(input.reportable);
-  const notReturned = !yes(input.returned);
+  const notReturned = no(input.returned);
   const noReturnAllowed = !excludedNoReturnRationales.includes(normalize(input.noReturnRationale));
   const keywordTrigger = foobPatterns.some(pattern => pattern.test(`${input.description || ''} ${input.briefDescription || ''}`));
   const singleUseTrigger = yes(input.labeledSingleUse);

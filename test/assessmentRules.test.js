@@ -70,6 +70,28 @@ test('parses Excel-exported complaint rows using screenshot-style headers', () =
   assert.equal(rows[0].reportable, true);
 });
 
+
+
+test('does not require DeviceHistory Review when Product Returned to MDT is Y in PE PLI import column', () => {
+  const rows = parseDelimitedComplaints([
+    'PE - PLI #	Product Description - PE PLI	Lot Number – PE PLI	Brief Description – PE	Reportable?	Product Returned to MDT? – PE PLI	Rationale for no return – PE PLI	Labeled for Single Use – PE PLI PM	RFR',
+    '0706730185-10	EGIA60AVM	LOT123	OUT OF BOX failure	Yes	Y	Still in Use	Y	Instrument did not work'
+  ].join('\n'));
+  const evaluation = evaluateTechnicalAssessmentNeed(rows[0]);
+  assert.equal(rows[0].returned, true);
+  assert.ok(!evaluation.required.some(result => result.id === 'device-history-review'));
+});
+
+test('requires DeviceHistory Review when Product Returned to MDT is N and rationale is allowed', () => {
+  const rows = parseDelimitedComplaints([
+    'PE - PLI #	Product Description - PE PLI	Lot Number – PE PLI	Brief Description – PE	Reportable?	Product Returned to MDT? – PE PLI	Rationale for no return – PE PLI	Labeled for Single Use – PE PLI PM	RFR',
+    '0706730185-10	EGIA60AVM	LOT123	OUT OF BOX failure	Yes	N	Still in Use	Y	Instrument did not work'
+  ].join('\n'));
+  const evaluation = evaluateTechnicalAssessmentNeed(rows[0]);
+  assert.equal(rows[0].returned, false);
+  assert.ok(evaluation.required.some(result => result.id === 'device-history-review'));
+});
+
 test('summarizes imported rows and exports recommendation CSV', () => {
   const rows = parseDelimitedComplaints('PE - PLI #,Product Description - PE PLI,Serial/Lot # - PE PLI,Event Description - PE,Code/LLT Desc - PE PLI,Product Returned to MDT?\n1,Pump,LOT1,Patient hospitalized after error code alarm,DEVICE DID NOT ACTIVATE,Y');
   const analyzed = summarizeBatch(rows, evaluateComplaint);
