@@ -53,6 +53,28 @@ test('explains why Design Assessment is indicated for recurring product damage',
   assert.ok(design.rationales.some(reason => reason.includes('Recurring issue or trend')));
   assert.ok(design.rationales.some(reason => reason.includes('Physical integrity affecting performance')));
 });
+test('requires Design Assessment for possible new or unanticipated device or software issues', () => {
+  const evaluation = evaluateTechnicalAssessmentNeed({
+    description: 'Investigation notes describe a new unanticipated software issue where the app skipped a safety prompt after update.',
+    product: 'therapy app',
+    lotKnown: true
+  });
+  const design = evaluation.required.find(result => result.id === 'design-assessment');
+  assert.ok(design);
+  assert.ok(design.rationales.some(reason => reason.includes('Possible new or unanticipated device/software issue')));
+});
+
+test('requires Design Assessment for further-action-related issues outside existing action scope', () => {
+  const evaluation = evaluateTechnicalAssessmentNeed({
+    description: 'The event is related to a previous further action but the new model does not meet the inclusion criteria for that action and shows a similar failure mode.',
+    product: 'new model controller',
+    lotKnown: true
+  });
+  const design = evaluation.required.find(result => result.id === 'design-assessment');
+  assert.ok(design);
+  assert.ok(design.rationales.some(reason => reason.includes('Further-action-related issue outside existing scope')));
+});
+
 
 import { parseDelimitedComplaints, summarizeBatch, toCsv } from '../src/excelImport.js';
 

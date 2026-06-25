@@ -12,14 +12,16 @@ export const assessmentOptions = [
     id: 'design-assessment',
     name: 'Design Assessment',
     owner: 'Design quality / product engineering',
-    purpose: 'Assess whether the complaint suggests a design, specification, performance, usability, or recurring product design issue.',
-    keywords: ['design', 'specification', 'recurrence', 'recurring', 'trend', 'malfunction', 'alarm', 'error code', 'would not', 'will not', 'stopped', 'intermittent', 'software', 'firmware', 'usability', 'use error', 'unable to', 'difficult to'],
-    evidence: ['Failure mode and affected function', 'Design inputs/outputs or specifications', 'Known issue, repeat complaint, or trend data', 'Software/firmware version when applicable'],
-    defaultActions: ['Compare the failure mode to design requirements and known issues', 'Review trend data, risk controls, usability factors, and software/firmware history']
+    purpose: 'Assess events that suggest a possible new or unanticipated device/software issue, or a further-action-related issue that falls outside the existing action scope.',
+    keywords: ['new issue', 'unanticipated', 'unexpected', 'unknown failure mode', 'novel', 'design', 'specification', 'recurrence', 'recurring', 'trend', 'malfunction', 'alarm', 'error code', 'would not', 'will not', 'stopped', 'intermittent', 'software', 'firmware', 'usability', 'use error', 'unable to', 'difficult to', 'further action', 'field action', 'corrective action', 'recall', 'new model', 'failure mode'],
+    evidence: ['Possible new or unanticipated device/software issue', 'Failure mode and affected function', 'Relationship to any existing or previous further action', 'Whether the event is outside the existing action inclusion criteria or scope', 'Software/firmware version when applicable'],
+    defaultActions: ['Determine whether the issue is new or unanticipated for the device/software', 'Compare the failure mode to design requirements, known issues, and further-action scope', 'Review trend data, risk controls, usability factors, and software/firmware history']
   },
 ];
 
 const designSignalGroups = [
+  { name: 'Possible new or unanticipated device/software issue', weight: 52, patterns: [/new (?:or )?(?:unanticipated|unexpected|previously unknown) (?:device|software|firmware|product)? ?issue|unanticipated (?:device|software|firmware|product)? ?issue|unexpected (?:device|software|firmware|product)? ?issue|unknown failure mode|novel failure mode|previously uninvestigated|not previously seen|first occurrence/i] },
+  { name: 'Further-action-related issue outside existing scope', weight: 50, patterns: [/(?:existing|previous|prior) (?:further action|field action|corrective action|recall|capa).{0,120}(?:outside|out of scope|does not meet|not meet|different model|new model|not included|inclusion criteria)|(?:outside|out of scope|does not meet|not meet|not included).{0,120}(?:further action|field action|corrective action|recall|capa|inclusion criteria|scope)|new model.{0,80}(?:previously investigated|known|same|similar) failure mode/i] },
   { name: 'Functional failure', weight: 28, patterns: [/malfunction|fail(?:ed|ure)?|stopped|broken|broke|did not activate|did not fire|would not|will not|unable to|incomplete|no output|loss of/i] },
   { name: 'Alarm, error, or diagnostic code', weight: 24, patterns: [/alarm|alert|error code|fault code|diagnostic|code\s*\d+/i] },
   { name: 'Software or firmware factor', weight: 24, patterns: [/software|firmware|app|version|upgrade|update|configuration|programming/i] },
@@ -79,7 +81,7 @@ export function evaluateDesignNeed(input = {}) {
     productKnown ? 'Product/family is available for design comparison' : '',
     lotKnown ? 'Lot/serial context is available for trend comparison' : '',
     input.patientImpact === true ? 'Patient impact increases assessment priority' : '',
-    recommendation === 'Not indicated from current facts' ? 'No design, performance, usability, software, recurrence, or functional-failure signal was found' : ''
+    recommendation === 'Not indicated from current facts' ? 'No new/unanticipated issue, further-action scope gap, design, performance, usability, software, recurrence, or functional-failure signal was found' : ''
   ]);
   return { required: recommendation === 'Required', score, recommendation, signals: matchedSignalNames, reasons };
 }
