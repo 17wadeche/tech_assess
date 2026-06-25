@@ -74,18 +74,9 @@ export function evaluateComplaint(input = {}) {
       if (dhr.exclusions.unknownSerialOrLot) rationales.push('Excluded: serial/lot is unknown');
       if (dhr.exclusions.excludedRfr) rationales.push('Excluded: RFR is excluded from DHR');
     }
-    if (option.id === 'mfg-assessment' && (lotKnown || malfunction)) {
-      score += lotKnown ? 15 : 0;
-      score += malfunction ? 25 : 0;
-      rationales.push('Manufacturing review is supported by traceability and/or malfunction facts');
-    }
     if (option.id === 'design-assessment' && malfunction) {
       score += 20;
       rationales.push('Failure mode may require design assessment');
-    }
-    if (option.id === 'cm-oem-assessment' && /accessory|component|supplier|handpiece|generator|connector|cable|oem|contract manufacturer/.test(text)) {
-      score += 25;
-      rationales.push('Accessory/component/supplier signal may require CM/OEM assessment');
     }
 
     const boundedScore = Math.min(score, 100);

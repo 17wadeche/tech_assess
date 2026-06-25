@@ -5,10 +5,7 @@ This prototype uses the assessment option names provided for the complaint-handl
 ## Technical assessment options
 
 - DeviceHistory Review
-- Mfg Assessment
 - Design Assessment
-- CM/OEM Assessment
-- RiskAssessmentReview
 
 ## Excel-style import workflow
 
