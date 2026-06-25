@@ -8,29 +8,8 @@ export const assessmentOptions = [
     evidence: ['Reportable? = Yes', 'Product not returned with allowed rationale', 'FOOB/OOB/DOA text, single-use label, or lot-based product', 'Known serial/lot and non-excluded RFR'],
     defaultActions: ['Perform DHR review for the known serial/lot', 'Document the triggering condition and confirm no exclusion criteria apply']
   },
-  {
-    id: 'design-assessment',
-    name: 'Design Assessment',
-    owner: 'Design quality / product engineering',
-    purpose: 'Assess events that suggest a possible new or unanticipated device/software issue, or a further-action-related issue that falls outside the existing action scope.',
-    keywords: ['new issue', 'unanticipated', 'unexpected', 'unknown failure mode', 'novel', 'design', 'specification', 'recurrence', 'recurring', 'trend', 'malfunction', 'alarm', 'error code', 'would not', 'will not', 'stopped', 'intermittent', 'software', 'firmware', 'usability', 'use error', 'unable to', 'difficult to', 'further action', 'field action', 'corrective action', 'recall', 'new model', 'failure mode'],
-    evidence: ['Possible new or unanticipated device/software issue', 'Failure mode and affected function', 'Relationship to any existing or previous further action', 'Whether the event is outside the existing action inclusion criteria or scope', 'Software/firmware version when applicable'],
-    defaultActions: ['Determine whether the issue is new or unanticipated for the device/software', 'Compare the failure mode to design requirements, known issues, and further-action scope', 'Review trend data, risk controls, usability factors, and software/firmware history']
-  },
 ];
 
-const designSignalGroups = [
-  { name: 'Possible new or unanticipated device/software issue', weight: 52, patterns: [/new (?:or )?(?:unanticipated|unexpected|previously unknown) (?:device|software|firmware|product)? ?issue|unanticipated (?:device|software|firmware|product)? ?issue|unexpected (?:device|software|firmware|product)? ?issue|unknown failure mode|novel failure mode|previously uninvestigated|not previously seen|first occurrence/i] },
-  { name: 'Further-action-related issue outside existing scope', weight: 50, patterns: [/(?:existing|previous|prior) (?:further action|field action|corrective action|recall|capa).{0,120}(?:outside|out of scope|does not meet|not meet|different model|new model|not included|inclusion criteria)|(?:outside|out of scope|does not meet|not meet|not included).{0,120}(?:further action|field action|corrective action|recall|capa|inclusion criteria|scope)|new model.{0,80}(?:previously investigated|known|same|similar) failure mode/i] },
-  { name: 'Functional failure', weight: 28, patterns: [/malfunction|fail(?:ed|ure)?|stopped|broken|broke|did not activate|did not fire|would not|will not|unable to|incomplete|no output|loss of/i] },
-  { name: 'Alarm, error, or diagnostic code', weight: 24, patterns: [/alarm|alert|error code|fault code|diagnostic|code\s*\d+/i] },
-  { name: 'Software or firmware factor', weight: 24, patterns: [/software|firmware|app|version|upgrade|update|configuration|programming/i] },
-  { name: 'Design specification or requirements concern', weight: 30, patterns: [/design|specification|requirement|tolerance|dimension|performance|output|input/i] },
-  { name: 'Usability or human factors concern', weight: 22, patterns: [/usability|use error|user interface|human factor|unable to|difficult to|confusing|training/i] },
-  { name: 'Recurring issue or trend', weight: 26, patterns: [/recurr|repeat|multiple|trend|same lot|similar complaints?|known issue/i] },
-  { name: 'Physical integrity affecting performance', weight: 20, patterns: [/cracked|detached|leak|fracture|weld|separated|bent|kink|delaminat|connector/i] },
-  { name: 'Clinical impact reported with device behavior', weight: 18, patterns: [/death|injur|hospital|intervention|surgery|therapy interrupted|patient|clinical/i] },
-];
 const foobPatterns = [/failure out of box|\bfoob\b|out of box failure|\boobf\b|out of box|out of the box|\bdoa\b/i];
 const excludedNoReturnRationales = ['unknown', 'expected', 'evaluated in the field'];
 const excludedRfrValues = ['not a complaint', 'no reported condition', 'customer feedback', 'procedure related adverse event – unrelated to device', 'procedure related adverse event - unrelated to device'];
@@ -66,33 +45,12 @@ export function evaluateDhrNeed(input = {}) {
   };
 }
 
-export function evaluateDesignNeed(input = {}) {
-  const text = buildText(input);
-  const signals = designSignalGroups.flatMap(group => group.patterns.some(pattern => pattern.test(text)) ? [{ name: group.name, weight: group.weight }] : []);
-  const matchedSignalNames = signals.map(signal => signal.name);
-  const baseScore = signals.reduce((sum, signal) => sum + signal.weight, 0);
-  const productKnown = known(input.product);
-  const lotKnown = known(input.lot) || known(input.lotNumber) || known(input.serialNumber) || input.lotKnown === true;
-  const factBoost = (productKnown ? 6 : 0) + (lotKnown ? 4 : 0) + (input.patientImpact === true ? 8 : 0);
-  const score = Math.min(100, baseScore + factBoost);
-  const recommendation = recommendationFor(score, 50, 24);
-  const reasons = unique([
-    ...matchedSignalNames.map(name => `Design signal: ${name}`),
-    productKnown ? 'Product/family is available for design comparison' : '',
-    lotKnown ? 'Lot/serial context is available for trend comparison' : '',
-    input.patientImpact === true ? 'Patient impact increases assessment priority' : '',
-    recommendation === 'Not indicated from current facts' ? 'No new/unanticipated issue, further-action scope gap, design, performance, usability, software, recurrence, or functional-failure signal was found' : ''
-  ]);
-  return { required: recommendation === 'Required', score, recommendation, signals: matchedSignalNames, reasons };
-}
-
 export function evaluateComplaint(input = {}) {
   const text = buildText(input);
   const lotKnown = known(input.lot) || known(input.lotNumber) || known(input.serialNumber) || input.lotKnown === true;
   const missingEvidence = evidenceFields.filter(field => !input[field] && !(field === 'lot' && lotKnown));
   const factCompleteness = Math.round(((evidenceFields.length - missingEvidence.length) / evidenceFields.length) * 100);
   const dhr = evaluateDhrNeed(input);
-  const design = evaluateDesignNeed(input);
 
   return assessmentOptions.map(option => {
     const matchedKeywords = option.keywords.filter(keyword => text.includes(keyword.toLowerCase()));
@@ -106,11 +64,6 @@ export function evaluateComplaint(input = {}) {
       if (dhr.exclusions.unknownSerialOrLot) rationales.push('Excluded: serial/lot is unknown');
       if (dhr.exclusions.excludedRfr) rationales.push('Excluded: RFR is excluded from DHR');
       recommendation = dhr.required ? 'Required' : 'Not indicated from current facts';
-    }
-    if (option.id === 'design-assessment') {
-      score = Math.max(score, design.score);
-      rationales.push(...design.reasons);
-      recommendation = design.recommendation;
     }
 
     const boundedScore = Math.min(score, 100);
@@ -129,10 +82,10 @@ export function evaluateTechnicalAssessmentNeed(input = {}) {
     technicalAssessmentNeeded: required.length > 0,
     confidence,
     confidenceLevel: confidenceLabel(confidence),
-    decision: required.length > 0 ? 'Technical assessment needed' : consider.length > 0 ? 'Technical assessment should be considered' : 'No technical assessment indicated from current facts',
+    decision: required.length > 0 ? 'DHR needed' : consider.length > 0 ? 'DHR should be considered' : 'No DHR indicated from current facts',
     required,
     consider,
     results,
-    riskSignals: unique([yes(input.reportable) ? 'Reportable flag in source data' : '', evaluateDhrNeed(input).required ? 'DHR business rules met' : '', results.find(result => result.id === 'design-assessment')?.recommendation === 'Required' ? 'Design Assessment rule threshold met' : ''])
+    riskSignals: unique([yes(input.reportable) ? 'Reportable flag in source data' : '', evaluateDhrNeed(input).required ? 'DHR business rules met' : ''])
   };
 }
