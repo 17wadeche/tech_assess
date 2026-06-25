@@ -45,11 +45,13 @@ test('excludes DeviceHistory Review for unknown lot or excluded RFR', () => {
   assert.equal(evaluateDhrNeed({ ...base, lotNumber: 'LOT123', rfr: 'Not a Complaint' }).required, false);
 });
 
-test('considers Mfg Assessment when lot information and product damage are known', () => {
-  const results = evaluateComplaint({ description: 'Same lot has multiple cracked connectors', lotKnown: true });
-  const manufacturing = results.find(result => result.id === 'mfg-assessment');
-  assert.ok(['Required', 'Consider'].includes(manufacturing.recommendation));
-  assert.ok(manufacturing.score > 0);
+test('explains why Design Assessment is indicated for recurring product damage', () => {
+  const results = evaluateComplaint({ description: 'Same lot has multiple cracked connectors', product: 'connector set', lotKnown: true });
+  const design = results.find(result => result.id === 'design-assessment');
+  assert.ok(['Required', 'Consider'].includes(design.recommendation));
+  assert.ok(design.score > 0);
+  assert.ok(design.rationales.some(reason => reason.includes('Recurring issue or trend')));
+  assert.ok(design.rationales.some(reason => reason.includes('Physical integrity affecting performance')));
 });
 
 import { parseDelimitedComplaints, summarizeBatch, toCsv } from '../src/excelImport.js';
@@ -98,6 +100,7 @@ test('summarizes imported rows and exports recommendation CSV', () => {
   const csv = toCsv(analyzed);
   assert.match(csv, /Required Assessments/);
   assert.match(csv, /Complaint ID/);
+  assert.match(csv, /Why/);
 });
 
 
@@ -112,7 +115,8 @@ test('returns an overall technical assessment decision with confidence', () => {
   assert.equal(evaluation.technicalAssessmentNeeded, true);
   assert.equal(evaluation.decision, 'Technical assessment needed');
   assert.ok(evaluation.confidence >= 70);
-  assert.ok(evaluation.required.some(result => result.id === 'mfg-assessment'));
+  assert.ok(evaluation.required.some(result => result.id === 'design-assessment'));
+  assert.ok(evaluation.required.find(result => result.id === 'design-assessment').rationales.length > 0);
 });
 
 function makeStoredZip(files) {
@@ -163,6 +167,7 @@ test('parses a native XLSX workbook and analyzes every complaint row', async () 
   const analyzed = summarizeBatch(rows, evaluateTechnicalAssessmentNeed);
   assert.equal(analyzed.length, 1);
   assert.equal(analyzed[0].decision, 'Technical assessment needed');
-  assert.ok(analyzed[0].required.some(result => result.id === 'mfg-assessment'));
+  assert.ok(analyzed[0].required.some(result => result.id === 'design-assessment'));
   assert.ok(analyzed[0].required.every(result => ['DeviceHistory Review', 'Design Assessment'].includes(result.name)));
+  assert.match(analyzed[0].rationaleSummary, /Design Assessment:/);
 });
