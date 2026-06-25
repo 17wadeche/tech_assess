@@ -9,15 +9,6 @@ export const assessmentOptions = [
     defaultActions: ['Perform DHR review for the known serial/lot', 'Document the triggering condition and confirm no exclusion criteria apply']
   },
   {
-    id: 'mfg-assessment',
-    name: 'Mfg Assessment',
-    owner: 'Manufacturing quality',
-    purpose: 'Assess whether manufacturing records, process controls, nonconformances, or lot/batch history may explain the alleged product issue.',
-    keywords: ['manufacturing', 'mfg', 'dhr', 'bhr', 'batch', 'lot', 'nonconformance', 'deviation', 'rework', 'broken', 'broke', 'detached', 'cracked', 'did not activate', 'failure', 'failed', 'staple line incomplete', 'did not fire'],
-    evidence: ['Lot/batch number', 'DHR/BHR records', 'Nonconformance/deviation history', 'Manufacturing release records'],
-    defaultActions: ['Review manufacturing records for the lot/batch', 'Check nonconformance, deviation, rework, and release history']
-  },
-  {
     id: 'design-assessment',
     name: 'Design Assessment',
     owner: 'Design quality / product engineering',
@@ -26,15 +17,6 @@ export const assessmentOptions = [
     evidence: ['Failure mode', 'Design inputs/outputs', 'Known issue or trend data', 'Software/firmware version when applicable'],
     defaultActions: ['Compare the failure mode to design requirements and known issues', 'Review trend data and product risk controls']
   },
-  {
-    id: 'cm-oem-assessment',
-    name: 'CM/OEM Assessment',
-    owner: 'Supplier quality / external manufacturing quality',
-    purpose: 'Assess whether a contract manufacturer, OEM, supplier, component, or externally manufactured accessory may be implicated.',
-    keywords: ['cm', 'oem', 'supplier', 'contract manufacturer', 'component', 'accessory', 'handpiece', 'generator', 'connector', 'cable', 'battery', 'lead', 'third party', 'material'],
-    evidence: ['Supplier or CM/OEM identity', 'Component part number', 'Supplier lot', 'Incoming inspection and supplier quality history'],
-    defaultActions: ['Determine whether the implicated item is CM/OEM or supplier-controlled', 'Review supplier quality history and notify responsible owner if criteria are met']
-  }
 ];
 
 const malfunctionPatterns = [/malfunction|fail|failure|stopped|alarm|broken|cracked|detached|broke|did not activate|would not|will not|error code|unable to|difficult to|did not fire|incomplete/i];
